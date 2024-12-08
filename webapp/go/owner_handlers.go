@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/oklog/ulid/v2"
 )
 
@@ -194,8 +195,12 @@ func ownerGetChairs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	owner := ctx.Value("owner").(*Owner)
 
-	chairs := []chairWithDetail{}
-	if err := db.SelectContext(ctx, &chairs, `SELECT id,
+	chair_ids := []string{}
+	if err := db.SelectContext(ctx, &chair_ids, `SELECT id FROM chairs WHERE owner_id = ?`, owner.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	sql_qry := `SELECT id,
        owner_id,
        name,
        access_token,
@@ -213,10 +218,16 @@ FROM chairs
                                 created_at,
                                 ABS(latitude - LAG(latitude) OVER (PARTITION BY chair_id ORDER BY created_at)) +
                                 ABS(longitude - LAG(longitude) OVER (PARTITION BY chair_id ORDER BY created_at)) AS distance
-                         FROM chair_locations) tmp
+                                FROM chair_locations WHERE chair_id in (?)) tmp
                    GROUP BY chair_id) distance_table ON distance_table.chair_id = chairs.id
-WHERE owner_id = ?
-`, owner.ID); err != nil {
+WHERE owner_id = ?`
+	sql_qry, params, err := sqlx.In(sql_qry, chair_ids, owner.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	chairs := []chairWithDetail{}
+	if err := db.SelectContext(ctx, &chairs, sql_qry, params...); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
