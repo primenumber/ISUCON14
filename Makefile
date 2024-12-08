@@ -4,12 +4,12 @@ all: app
 ADDR := 54.199.104.110
 
 app:
-	cd webapp/go; GOOS=linux GOARCH=amd64 go build -o isupipe
+	cd webapp/go; GOOS=linux GOARCH=amd64 go build -o isuride
 
 deploy-app: app nginx-log-rotate mysql-log-rotate
-	ssh isucon@$(ADDR) rm /home/isucon/webapp/go/isupipe
+	ssh isucon@$(ADDR) rm /home/isucon/webapp/go/isuride
 	scp -r webapp/go isucon@$(ADDR):/home/isucon/webapp/
-	ssh isucon@$(ADDR) sudo systemctl restart isupipe-go.service
+	ssh isucon@$(ADDR) sudo systemctl restart isuride-go.service
 
 upload-sql:
 	scp -r webapp/sql isucon@$(ADDR):/home/isucon/webapp/
@@ -52,9 +52,9 @@ include env.sh
 
 # 問題によって変わる変数
 USER:=isucon
-BIN_NAME:=isu-go
+BIN_NAME:=isuride-go
 BUILD_DIR:=/home/isucon/private_isu/webapp/golang
-SERVICE_NAME:=isu-go.service
+SERVICE_NAME:=isuride-go.service
 
 DB_PATH:=/etc/mysql
 NGINX_PATH:=/etc/nginx
