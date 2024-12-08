@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"strconv"
 
-	_ "net/http/pprof"
+	// _ "net/http/pprof"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -23,9 +23,9 @@ var db *sqlx.DB
 
 func main() {
 	// pprof ここから
-	go func() {
-		fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	// go func() {
+	// 	fmt.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
 	// pprof ここまで
 
 	mux := setup()
