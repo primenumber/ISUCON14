@@ -70,6 +70,60 @@ SYSTEMD_PATH:=/etc/systemd/system
 NGINX_LOG:=/var/log/nginx/access.log
 DB_SLOW_LOG:=/var/log/mysql/mysql-slow.log
 
+# メインで使うコマンド ------------------------
+
+# サーバーの環境構築　ツールのインストール、gitまわりのセットアップ
+.PHONY: setup
+setup: install-tools git-setup enable-monitoring
+
+# 設定ファイルなどを取得してgit管理下に配置する
+.PHONY: get-conf
+get-conf: check-server-id get-db-conf get-nginx-conf get-service-file get-envsh
+
+# リポジトリ内の設定ファイルをそれぞれ配置する
+.PHONY: deploy-conf
+deploy-conf: check-server-id deploy-db-conf deploy-nginx-conf deploy-service-file deploy-envsh
+
+# ベンチマークを走らせる直前に実行する
+.PHONY: bench
+bench: check-server-id mv-logs build deploy-conf restart watch-service-log
+
+# slow queryを確認する
+.PHONY: slow-query
+slow-query:
+	ssh isucon@$(ADDR) 'sudo pt-query-digest $(DB_SLOW_LOG)'
+
+# alpでアクセスログを確認する
+.PHONY: alp
+alp:
+	ssh isucon@$(ADDR) 'sudo alp ltsv --file=$(NGINX_LOG) --config=/home/isucon/tool-config/alp/config.yml'
+
+# pprofで記録する
+.PHONY: pprof-record
+pprof-record:
+	ssh isucon@$(ADDR) 'go tool pprof http://localhost:6060/debug/pprof/profile'
+
+# pprofで確認する
+.PHONY: pprof-check
+pprof-check:
+	ssh isucon@$(ADDR) '$(eval latest := $(shell ls -rt pprof/ | tail -n 1))'
+	ssh isucon@$(ADDR) 'go tool pprof -http=localhost:8090 pprof/$(latest)'
+
+# DBに接続する
+.PHONY: access-db
+access-db:
+	ssh isucon@$(ADDR) 'mysql -h $(MYSQL_HOST) -P $(MYSQL_PORT) -u $(MYSQL_USER) -p$(MYSQL_PASS) $(MYSQL_DBNAME)0'
+
+# モニタリングを停止する
+.PHONY: disable-monitoring
+disable-monitoring:
+	ssh isucon@$(ADDR) 'sudo systemctl disable netdata'
+	ssh isucon@$(ADDR) 'sudo systemctl stop netdata'
+
+# 再起動する
+.PHONY: reboot
+reboot:
+	ssh isucon@$(ADDR) 'sudo reboot'
 
 # 主要コマンドの構成要素 ------------------------
 
@@ -110,10 +164,10 @@ git-setup:
 .PHONY: check-server-id
 check-server-id:
 ifdef SERVER_ID
-	ssh isucon@$(ADDR) '@echo "SERVER_ID=$(SERVER_ID)"'
+	ssh isucon@$(ADDR) 'echo "SERVER_ID=$(SERVER_ID)"'
 else
-	ssh isucon@$(ADDR) '@echo "SERVER_ID is unset"'
-	ssh isucon@$(ADDR) '@exit 1'
+	ssh isucon@$(ADDR) 'echo "SERVER_ID is unset"'
+	ssh isucon@$(ADDR) 'exit 1'
 endif
 
 .PHONY: set-as-s1
