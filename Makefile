@@ -14,9 +14,10 @@ app:
 	cd webapp/go; GOOS=linux GOARCH=amd64 go build -o isuride
 
 deploy-app: app nginx-log-rotate mysql-log-rotate
-	ssh isucon@$(ADDR) rm /home/isucon/webapp/go/isuride
+	ssh isucon@$(ADDR) 'rm /home/isucon/webapp/go/isuride'
 	scp -r webapp/go isucon@$(ADDR):/home/isucon/webapp/
-	ssh isucon@$(ADDR) sudo systemctl restart isuride-go.service
+	ssh isucon@$(ADDR) 'sudo systemctl daemon-reload'
+	ssh isucon@$(ADDR) 'sudo systemctl restart isuride-go.service'
 
 upload-sql:
 	scp -r webapp/sql isucon@$(ADDR):/home/isucon/webapp/
