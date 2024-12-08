@@ -48,6 +48,8 @@ CREATE TABLE chair_locations
 )
   COMMENT = '椅子の現在位置情報テーブル';
 
+CREATE INDEX cloc_chair_id_index ON chair_locations(chair_id);
+
 DROP TABLE IF EXISTS users;
 CREATE TABLE users
 (
@@ -95,6 +97,7 @@ CREATE TABLE rides
   COMMENT = 'ライド情報テーブル';
 
 CREATE INDEX ride_chair_id_index on rides(chair_id);
+CREATE INDEX ride_upd_index on rides(updated_at);
 CREATE INDEX ride_user_id_index on rides(user_id);
 
 DROP TABLE IF EXISTS ride_statuses;
@@ -111,6 +114,7 @@ CREATE TABLE ride_statuses
   COMMENT = 'ライドステータスの変更履歴テーブル';
 
 CREATE INDEX rstatus_ride_id_index on ride_statuses(ride_id);
+CREATE INDEX rstatus_create_index on ride_statuses(created_at);
 
 DROP TABLE IF EXISTS owners;
 CREATE TABLE owners
