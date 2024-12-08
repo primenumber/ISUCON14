@@ -123,28 +123,39 @@ func chairPostCoordinate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ride := &Ride{}
-	if err := tx.GetContext(ctx, ride, `SELECT id, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude FROM rides WHERE chair_id = ? ORDER BY updated_at DESC LIMIT 1`, chair.ID); err != nil {
+	var ride struct {
+		ID                   string `db:"id"`
+		PickupLatitude       int    `db:"pickup_latitude"`
+		PickupLongitude      int    `db:"pickup_longitude"`
+		DestinationLatitude  int    `db:"destination_latitude"`
+		DestinationLongitude int    `db:"destination_longitude"`
+		Status               string `db:"status"`
+	}
+
+	query := `
+        SELECT r.id, r.pickup_latitude, r.pickup_longitude, r.destination_latitude, r.destination_longitude, rs.status
+        FROM rides r
+        LEFT JOIN ride_statuses rs ON r.id = rs.ride_id
+        WHERE r.chair_id = ? 
+        ORDER BY rs.created_at DESC 
+        LIMIT 1
+    `
+	if err := tx.GetContext(ctx, &ride, query, chair.ID); err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			writeError(w, http.StatusInternalServerError, err)
 			return
 		}
 	} else {
-		status, err := getLatestRideStatus(ctx, tx, ride.ID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, err)
-			return
-		}
-		if status != "COMPLETED" && status != "CANCELED" {
-			if req.Latitude == ride.PickupLatitude && req.Longitude == ride.PickupLongitude && status == "ENROUTE" {
-				if _, err := tx.ExecContext(ctx, "INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)", ulid, ride.ID, "PICKUP"); err != nil {
-					writeError(w, http.StatusInternalServerError, err)
-					return
-				}
+		if ride.Status != "COMPLETED" && ride.Status != "CANCELED" {
+			var newStatus string
+			if req.Latitude == ride.PickupLatitude && req.Longitude == ride.PickupLongitude && ride.Status == "ENROUTE" {
+				newStatus = "PICKUP"
+			} else if req.Latitude == ride.DestinationLatitude && req.Longitude == ride.DestinationLongitude && ride.Status == "CARRYING" {
+				newStatus = "ARRIVED"
 			}
 
-			if req.Latitude == ride.DestinationLatitude && req.Longitude == ride.DestinationLongitude && status == "CARRYING" {
-				if _, err := tx.ExecContext(ctx, "INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)", ulid, ride.ID, "ARRIVED"); err != nil {
+			if newStatus != "" {
+				if _, err := tx.ExecContext(ctx, "INSERT INTO ride_statuses (id, ride_id, status) VALUES (?, ?, ?)", ulid, ride.ID, newStatus); err != nil {
 					writeError(w, http.StatusInternalServerError, err)
 					return
 				}
