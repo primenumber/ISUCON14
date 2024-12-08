@@ -36,6 +36,8 @@ CREATE TABLE chairs
 )
   COMMENT = '椅子情報テーブル';
 
+CREATE INDEX chair_token_index ON chairs(access_token);
+
 DROP TABLE IF EXISTS chair_locations;
 CREATE TABLE chair_locations
 (
