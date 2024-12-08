@@ -22,7 +22,7 @@ upload-sql:
 	scp -r webapp/sql isucon@$(ADDR):/home/isucon/webapp/
 
 deploy-mysql-only: mysql-log-rotate
-	scp -r etc/mysql isucon@$(ADDR):/tmp
+	scp -r $(SERVER_ID)/etc/mysql isucon@$(ADDR):/tmp
 	ssh isucon@$(ADDR) 'sudo cp -rT /tmp/mysql /etc/mysql ; sudo systemctl restart mysql'
 
 mysql-log-rotate:
@@ -36,7 +36,7 @@ pt-query-digest:
 	pt-query-digest /tmp/mysql-slow.log | tee /tmp/digest.txt.`date +%Y%m%d-%H%M%S`
 
 deploy-nginx-only: nginx-log-rotate
-	scp -r etc/nginx isucon@$(ADDR):/tmp
+	scp -r $(SERVER_ID)/etc/nginx isucon@$(ADDR):/tmp
 	ssh isucon@$(ADDR) 'sudo cp -rT /tmp/nginx /etc/nginx ; sudo systemctl restart nginx'
 
 nginx-log-rotate:
@@ -45,8 +45,8 @@ nginx-log-rotate:
 get-nginx-log:
 	scp isucon@$(ADDR):/var/log/nginx/access.log /tmp
 
-alp:
-	cat /tmp/access.log| alp json -m "/api/user/[0-9a-zA-Z]*/livestream,/api/user/[0-9a-zA-Z]*/statistics,/api/livestream/[0-9a-zA-Z]*/livecomment,/api/livestream/[0-9a-zA-Z]*/reaction,/api/livestream/[0-9a-zA-Z]*/moderate,/api/livestream/[0-9a-zA-Z]*/statistics,/api/livestream/[0-9a-zA-Z]*/report,/api/livestream/[0-9a-zA-Z]*/enter,/api/livestream/[0-9a-zA-Z]*/ngwords,/api/livestream/[0-9a-zA-Z]*/exit,/api/user/[0-9a-zA-Z]*/icon,/api/user/[0-9a-zA-Z]*/theme,/api/livestream/[0-9a-zA-Z]*/livecomment/[0-9a-zA-Z]*/report" --sort=sum -r
+execute-alp:
+	cat /tmp/access.log| alp ltsv --config=tool-config/alp/config.yml
 
 
 
@@ -86,7 +86,7 @@ deploy-conf: check-server-id deploy-db-conf deploy-nginx-conf deploy-service-fil
 
 # ベンチマークを走らせる直前に実行する
 .PHONY: bench
-bench: check-server-id mv-logs build deploy-conf restart watch-service-log
+bench: check-server-id mv-logs build deploy-conf restart
 
 # slow queryを確認する
 .PHONY: slow-query
